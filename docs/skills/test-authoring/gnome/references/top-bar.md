@@ -99,3 +99,11 @@ _shell_eval('Main.overview.searchEntry.clutter_text.get_text()')
 # returns: (true, 'Files')  — parse with regex on the second element
 ```
 
+## Activities overview (GNOME 50 QEMU)
+
+`Main.overview.visible.toString()` consistently returns `false` in QEMU on GNOME 50
+even after `Main.overview.show()` is called. Do NOT assert `Main.overview.visible` or
+switch to `Main.overview._shown` without confirming on a live GNOME 50 QEMU run —
+the behavior is not reproducible locally without a full VM boot. Scenarios that depend
+on overview visibility must be quarantined (`@quarantine`) until the correct GNOME 50
+API is confirmed.
