@@ -3,7 +3,7 @@
 Coverage snapshot and known gaps live in `docs/skills/test-authoring/suite-map/SKILL.md`. Read that file for the current per-suite matrix, authoritative counts, and `@future` stub list rather than duplicating counts here.
 
 The current branch's mechanical recount is 519 scenarios across 72 feature files:
-406 active, 0 `@quarantine`, 113 `@future`/`@pending`/`@hardware_blocked` (see the generated snapshot in `docs/skills/test-authoring/suite-map/SKILL.md`). The five active
+408 active, 0 `@quarantine`, 111 `@future`/`@pending`/`@hardware_blocked` (see the generated snapshot in `docs/skills/test-authoring/suite-map/SKILL.md`). The five active
 sudo-rs scenarios are included in the smoke total there.
 
 ## What this repo is responsible for
