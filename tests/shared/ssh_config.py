@@ -17,7 +17,10 @@ handling, connect timeout, port flag) inline.
    ``ssh_port``) — behave's ``userdata`` is a plain dict; on a mock context
    without userdata, attribute lookup falls through to step 3 automatically.
 3. Environment variables (``SSH_KEY``/``SSH_KEY_PATH``, ``VM_IP``,
-   ``VM_USER``/``SSH_USER``, ``SSH_PORT``/``VM_PORT``).
+   ``VM_USER``/``SSH_USER``, ``SSH_PORT``/``VM_PORT``/``TMT_SSH_PORT``).
+   ``TMT_SSH_PORT`` is read so tmt-provisioned lanes on a forwarded port do
+   not silently connect to 22 — suite ``environment.py`` hooks resolve host,
+   user and key from ``TMT_SSH_*`` but mostly never set ``context.ssh_port``.
 4. Built-in defaults matching the runner container layout.
 """
 
@@ -74,6 +77,7 @@ def resolve_ssh_details(context=None) -> dict:
             userdata.get("ssh_port", ""),
             os.environ.get("SSH_PORT", ""),
             os.environ.get("VM_PORT", ""),
+            os.environ.get("TMT_SSH_PORT", ""),
         ) or DEFAULT_SSH_PORT,
     }
 
@@ -109,9 +113,13 @@ def ssh_argv(context=None, *, connect_timeout: int = 10, quiet: bool = False) ->
 def populate_ssh_context(context) -> None:
     """Set the context attributes ``run_ssh`` requires.
 
-    Any suite whose steps star-import ``tests.shared.ssh_steps`` must call
-    this from ``before_all`` — otherwise the shared steps raise
-    ``AttributeError`` on first use.
+    Suites whose steps star-import ``tests.shared.ssh_steps`` should call this
+    from ``before_all`` (or set the attributes themselves). The shared steps no
+    longer raise ``AttributeError`` when it is skipped: ``run_ssh`` builds its
+    argv through ``ssh_argv(context)``, whose ``resolve_ssh_details`` falls back
+    to userdata, environment and built-in defaults. So a suite that skips this
+    call connects with *default* credentials instead of failing loudly — call it
+    to pin the resolved values once, in one place, for the whole run.
     """
     details = resolve_ssh_details(context)
     context.ssh_key = details["ssh_key"]

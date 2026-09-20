@@ -33,7 +33,7 @@ def _full_context(userdata=None):
 _ENV_CLEAR = {
     k: "" for k in (
         "SSH_KEY", "SSH_KEY_PATH", "VM_IP", "VM_USER", "SSH_USER",
-        "SSH_PORT", "VM_PORT",
+        "SSH_PORT", "VM_PORT", "TMT_SSH_PORT",
     )
 }
 
@@ -57,6 +57,20 @@ class TestResolveSshDetailsDefaults:
         assert details["ssh_key"] == "/env/key"
         assert details["vm_ip"] == "192.0.2.10"
         assert details["ssh_user"] == "envuser"
+        assert details["ssh_port"] == "2222"
+
+    def test_tmt_ssh_port_used_when_no_other_port_set(self):
+        """tmt-provisioned lanes (dx/flatcar) export TMT_SSH_* only; without
+        this the forwarded port was dropped and ssh connected to 22."""
+        env = dict(_ENV_CLEAR, TMT_SSH_PORT="2022")
+        with patch.dict(os.environ, env, clear=False):
+            details = ssh_config.resolve_ssh_details(_bare_context())
+        assert details["ssh_port"] == "2022"
+
+    def test_ssh_port_beats_tmt_ssh_port(self):
+        env = dict(_ENV_CLEAR, SSH_PORT="2222", TMT_SSH_PORT="2022")
+        with patch.dict(os.environ, env, clear=False):
+            details = ssh_config.resolve_ssh_details(_bare_context())
         assert details["ssh_port"] == "2222"
 
     def test_userdata_beats_environment(self):

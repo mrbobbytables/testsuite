@@ -38,11 +38,13 @@ from tests.shared.ssh_steps import *  # noqa: F401,F403
 
 ## Importing the steps is only half the contract
 
-`run_ssh()` reads its connection details from **`context`**, not from the
-environment. A suite that star-imports `ssh_steps` must also populate
-`context.vm_ip`, `context.ssh_user`, `context.ssh_key` and optionally
-`context.ssh_port` in `before_all`, or every SSH step raises `AttributeError`
-at runtime.
+`run_ssh()` resolves its connection details through
+`ssh_config.ssh_argv(context)`, which prefers **`context`** attributes
+(`vm_ip`, `ssh_user`, `ssh_key`, `ssh_port`) and only then falls back to behave
+userdata, environment variables and runner defaults. A suite that star-imports
+`ssh_steps` without populating those attributes no longer raises
+`AttributeError` — it silently connects with *default* credentials, which is
+worse. Populate them in `before_all`.
 
 Resolve them through the shared helper rather than hand-rolling per suite:
 
