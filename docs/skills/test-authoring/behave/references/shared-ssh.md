@@ -46,6 +46,20 @@ userdata, environment variables and runner defaults. A suite that star-imports
 `AttributeError` — it silently connects with *default* credentials, which is
 worse. Populate them in `before_all`.
 
+To keep that failure mode diagnosable, `ssh_argv()` prints the resolved
+destination once per distinct target, together with where each field came from:
+
+```
+SSH target: bluefin-test@127.0.0.1:22 key=/home/bluefin-test/.ssh/id_ed25519 (ssh_key=default,ssh_port=default,ssh_user=default,vm_ip=default)
+WARNING: no SSH connection details were configured — using built-in runner defaults. ...
+```
+
+The warning fires only when *every* field fell back to a built-in default,
+i.e. nothing (context, userdata, or environment) configured the run. Use
+`ssh_config.resolve_ssh_details_with_sources(context)` when a suite or test
+needs to assert the details came from a non-default source.
+
+
 Resolve them through the shared helper rather than hand-rolling per suite:
 
 ```python
@@ -114,6 +128,9 @@ single builder for SSH argv. Two properties of that contract are easy to get wro
   where the old hand-rolled argv already suppressed the banner (`run_ssh`, `image_cache`,
   the software `_has_bazaar` probe, dx/flatcar/vanilla-gnome). Passing it everywhere hides
   diagnostics that kde-smoke and the screenshot helper rely on.
+- **`connect_timeout` is per call site.** The default is 10s; a probe that previously used
+  a longer connect window (e.g. the vanilla-gnome Flatpak probe, 20s) must pass
+  `connect_timeout=` explicitly rather than relying on the command timeout.
 
 Suites must not hand-roll `ssh` argv. `tests/unit/test_ssh_transport_contract.py`
 enforces this for the modules listed in its `MIGRATED_MODULES` set — add new suites there

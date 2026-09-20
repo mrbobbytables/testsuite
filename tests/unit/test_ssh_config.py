@@ -92,6 +92,57 @@ class TestResolveSshDetailsDefaults:
         assert details["ssh_port"] == "2200"
 
 
+class TestResolvedTargetLogging:
+    """Silent fallback to runner defaults must at least be diagnosable: the
+    resolved destination is logged and an all-defaults resolution warns."""
+
+    def setup_method(self):
+        ssh_config._logged_targets.clear()
+
+    def test_sources_reported_per_field(self):
+        env = dict(_ENV_CLEAR, VM_IP="192.0.2.50")
+        with patch.dict(os.environ, env, clear=False):
+            resolved = ssh_config.resolve_ssh_details_with_sources(
+                _bare_context({"vm_user": "uduser"})
+            )
+        assert resolved["vm_ip"] == ("192.0.2.50", ssh_config.SOURCE_ENVIRONMENT)
+        assert resolved["ssh_user"] == ("uduser", ssh_config.SOURCE_USERDATA)
+        assert resolved["ssh_key"] == (
+            ssh_config.DEFAULT_SSH_KEY, ssh_config.SOURCE_DEFAULT
+        )
+
+    def test_context_attributes_reported_as_context_source(self):
+        with patch.dict(os.environ, _ENV_CLEAR, clear=False):
+            resolved = ssh_config.resolve_ssh_details_with_sources(_full_context())
+        assert all(
+            source == ssh_config.SOURCE_CONTEXT for _v, source in resolved.values()
+        )
+
+    def test_argv_logs_destination_and_warns_on_all_defaults(self, capsys):
+        with patch.dict(os.environ, _ENV_CLEAR, clear=False):
+            ssh_config.ssh_argv(_bare_context())
+        out = capsys.readouterr().out
+        assert (
+            f"{ssh_config.DEFAULT_VM_USER}@{ssh_config.DEFAULT_VM_IP}:"
+            f"{ssh_config.DEFAULT_SSH_PORT}" in out
+        )
+        assert "WARNING" in out
+        assert "populate_ssh_context" in out
+
+    def test_no_warning_when_target_is_configured(self, capsys):
+        with patch.dict(os.environ, _ENV_CLEAR, clear=False):
+            ssh_config.ssh_argv(_full_context())
+        out = capsys.readouterr().out
+        assert "ctxuser@10.1.1.1:2200" in out
+        assert "WARNING" not in out
+
+    def test_destination_logged_once_per_target(self, capsys):
+        with patch.dict(os.environ, _ENV_CLEAR, clear=False):
+            ssh_config.ssh_argv(_full_context())
+            ssh_config.ssh_argv(_full_context())
+        assert capsys.readouterr().out.count("SSH target:") == 1
+
+
 class TestPopulateSshContext:
     def test_sets_all_attributes_run_ssh_requires(self):
         ctx = _bare_context()

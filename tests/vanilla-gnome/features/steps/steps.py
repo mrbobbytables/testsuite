@@ -134,15 +134,18 @@ def overview_search_bar_contains(context, text) -> None:
     assert text in entry.text, f"Search bar text '{entry.text}' does not contain '{text}'"
 
 
-def _ssh_run(cmd: str, timeout: int = 15, context=None) -> subprocess.CompletedProcess:
+def _ssh_run(cmd: str, timeout: int = 15, context=None,
+             connect_timeout: int = 10) -> subprocess.CompletedProcess:
     """Run a command on the VM via SSH.
 
     ``timeout`` bounds only the local wait for the command to finish; the SSH
-    *connect* deadline is fixed at ``ssh_argv``'s default (10s) so a long
+    *connect* deadline is passed separately as ``connect_timeout`` so a long
     command timeout no longer inflates how long a dead connection is retried.
+    Call sites that need a longer connect window on a slow-booting VM raise
+    ``connect_timeout`` explicitly.
     """
     return subprocess.run(
-        ssh_argv(context, quiet=True) + [cmd],
+        ssh_argv(context, quiet=True, connect_timeout=connect_timeout) + [cmd],
         capture_output=True, text=True, timeout=timeout,
     )
 
@@ -200,7 +203,11 @@ def _command_exists(command: str, context=None) -> bool:
 def _flatpak_app_exists(app_id: str, context=None) -> bool:
     """Check whether a Flatpak app is installed on the VM."""
     try:
-        result = _ssh_run('flatpak list --app --columns=application 2>/dev/null', timeout=20, context=context)
+        result = _ssh_run(
+            'flatpak list --app --columns=application 2>/dev/null',
+            timeout=20, connect_timeout=20, context=context,
+        )
+
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
     if result.returncode != 0:
