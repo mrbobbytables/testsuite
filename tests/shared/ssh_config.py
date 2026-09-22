@@ -43,6 +43,12 @@ SOURCE_DEFAULT = "default"
 
 _logged_targets = set()
 
+def _first_value(*values: str) -> str:
+    for value in values:
+        if value:
+            return value
+    return ""
+
 
 def _pick(context_value, userdata_values, env_values, default):
     """Return ``(value, source)`` for one field, honouring the priority order."""
